@@ -1,7 +1,8 @@
 import streamlit as st # 스트림릿 페이지
+import pandas as pd
 # import 대상 -> 파일(.py)
 # import crawling as cr
-from crawilng import crawling_saramin, crawling_work24
+from crawilng import crawling_saramin, crawling_work24, download_to_csv
 
 # 레이아웃(웹 페이지의 생김새)
 # 스트림릿 웹페이지의 '헤더' 역할
@@ -97,22 +98,38 @@ crawling_clicked = st.button('크롤링 시작', use_container_width=True, type=
 # 1. 크롤링한 결과를 어떻게 받아올 것인가?
 # df = 
 # 2. 크롤링 하는 동안 어떻게 안내할 것인가?
+st.session_state['df'] = pd.DataFrame()
 if crawling_clicked:
 # 2-1. 검색어나 필수 요소가 누락된 경우 안내
     # 검색어(search_text) 가 없다.(not)
     if not search_text:
         st.warning('검색어를 입력해주세요.')
+        df = pd.DataFrame()
 # 2-2. 크롤링 시행하는 동안 '기다려주세요' 라는 내용 표시
     else:
         with st.spinner(f'{site_select}에서 {search_text} 검색 결과 가져오는 중...'):
             # st.write(f'{site_select}에서 {search_text} 검색 결과 가져오는 중...')
             if site_select == '사람인':
                 # 사람인 사이트의 내용을 크롤링하는 함수
-                df = crawling_saramin()
+                df = crawling_saramin(search_text=search_text,
+                                    except_text=except_text,
+                                    region=locations,
+                                    category=categorys,
+                                    career=career,
+                                    education=edu,
+                                    max_pages=max_pages)
+
 
             else:
                 # 고용24 사이트의 내용을 크롤링하는 함수
-                df = crawling_work24()
+                df = crawling_work24(search_text=search_text,
+                                    except_text=except_text,
+                                    region=region,
+                                    category=occupation,
+                                    career=career,
+                                    education=edu,
+                                    max_pages=max_pages)
+
 
     st.session_state['df'] = df
 # st.session_state
@@ -120,4 +137,18 @@ if crawling_clicked:
 # session_state는 '딕셔너리'처럼 저장
 # session_state['df']
 # df['expection'] == df.expection 같은 표현방식
-df = st.session_state.df
+df = st.session_state['df']
+if df is not None and not df.empty:
+    st.subheader('검색 결과')
+    st.dataframe(df,
+                use_container_width=True,
+                hide_index=True)
+    csv_data = download_to_csv(df)
+    st.download_button(label='CSV 결과 다운로드',
+                        data=csv_data,
+                        file_name = f'crawling_results_{site_select}.csv',
+                        mime='text/csv')
+    
+    if 'df' not in st.session_state:
+        st.session_state['df'] = pd.DataFrame()
+    # st.write(df)
